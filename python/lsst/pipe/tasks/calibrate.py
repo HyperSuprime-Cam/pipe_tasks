@@ -159,11 +159,9 @@ class CalibrateConfig(pexConfig.Config):
         if aperture_elliptical in self.measurement.value.algorithms.names:
             self.measurement.value.algorithms.names -= (aperture_elliptical,)
         #
-        # Stop flux.gaussian recomputing the Gaussian's weights (as shape.sdss already did that)
+        # Let flux.gaussian use other algorithms for Gaussian's weights
         #
         try:
-            self.initialMeasurement.algorithms['flux.gaussian'].fixed = True
-            self.measurement.algorithms['flux.gaussian'].fixed = True
             self.initialMeasurement.algorithms['flux.gaussian'].centroid = \
                 'initial.shape.sdss.centroid'
             self.initialMeasurement.algorithms['flux.gaussian'].shape = 'initial.shape.sdss'
