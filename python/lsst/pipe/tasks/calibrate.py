@@ -402,3 +402,63 @@ class CalibrateTask(pipeBase.Task):
         self.log.info("installInitialPsf fwhm=%.2f pixels; size=%d pixels" % (fwhm, size))
         psf = cls(size, size, fwhm/(2*math.sqrt(2*math.log(2))))
         exposure.setPsf(psf)
+
+
+
+class DynamicMaskConfig(Config):
+    # These defaults from Pan-STARRS
+    maxMag = Field(dtype=float, default=-15.0, doc="Maximim instrumental magnitude for masking")
+    starMask = Field(dtype=str, default="BRIGHT_STAR", doc="Mask plane to use for star mask")
+    doStar = Field(dtype=bool, default=True, doc="Apply star mask?")
+    starMaxMag = Field(dtype=float, default=-15.0, doc="Maximum instrumental magnitude for star mask")
+    starScale = Field(dtype=float, default=10.15, doc="Scaling of star radius by magnitude")
+    doSpike = Field(dtype=bool, default=True, doc="Apply diffraction spike mask?")
+    spikeLengthMaxMag = Field(dtype=float, default=7.35, doc="Maximum magnitude for spike length scaling")
+    spikeLengthScale = Field(dtype=float, default=0.096, doc="Scaling of spike length by magnitude")
+    spikeLengthOffset = Field(dtype=float, default=200.0, doc="Offset for spike length")
+    spikeWidthZero = Field(dtype=float, default=8.0, doc="Base spike width")
+    spikeWidthScale = Field(dtype=float, default=0.01, doc="Scaling of spike width by length")
+    spikeWidthLength0 = Field(dtype=float, default=200.0, doc="Offset for scaling spike width by length")
+    spikeAngles = ListField(dtype=float, default=[0, 90, 180, 270],
+                            doc="List of angles (degrees) for spikes, relative to position angle")
+    paHeader = Field(dtype=str, default="POSANG", doc="Header keyword with position angle")
+
+    def applyDynamicMask(self, exposure):
+        config = self.config.dynamicMask
+        wcs = exposure.getWcs()
+        bbox = exposure.getBBox(afwImage.PARENT)
+        if config.doSpike:
+            pa = float(exposure.getMetadata().get(config.paHeader))*afwGeom.degrees
+
+        mask = exposure.getMaskedImage().getMask()
+        mask.addMaskPlane(config.mask)
+        maskVal = mask.getPlaneBitMask(config.mask)
+
+        # Grab new reference catalog --- don't use matches because the really bright stars may not have matched
+        catalog = self.astrometry.astrometer.getReferenceSourcesForWcs(wcs, exposure.getDimensions(),
+                                                                       exposure.getFilter().getName(),
+                                                                       config.buffer)
+
+        calib = exposure.getCalib()
+        fluxMag0 = calib.getFluxMag0()[0]
+        refMag = -2.5*numpy.log10(catalog["flux"]) - 2.5*log10(fluxMag0) # Instrumental mag
+
+        bright = refMag < config.maxMag
+        for src, mag in zip(catalog[bright], refMag[bright]):
+            # Circle around star
+            if config.doStar:
+                radius = config.starScale*(config.starMaxMag - mag)
+                center = wcs.skyToPixel(src.getCoord())
+                ellipse = afwEll.Ellipse(afwEll.Axes(radius, radius), center)
+                foot = afwDet.Footprint(ellipse)
+                foot.clipTo(bbox)
+                afwDet.setMaskFromFootprint(mask, foot, maskVal)
+
+            # Diffraction spikes
+            if config.doSpike:
+                length = max(10.0**(config.spikeLengthScale*(config.spikeLengthMaxMag - mag)) -
+                             config.spikeLengthOffset, 0.0)
+                width = config.spikeWidthZero + ((length - config.spikeWidthLength0)*config.spikeWidthScale if
+                                                 length > config.spikeWidthLength0 else 0.0)
+                for angle in config.spikeAngles:
+                    maskBox(center, length, width, angle*afwGeom.degrees + pa)
