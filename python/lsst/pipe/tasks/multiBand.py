@@ -516,7 +516,7 @@ class MergeDetectionsTask(MergeSourcesTask):
             foot = afwDetect.Footprint(afwGeom.PointI(x, y), skySourceRadius, patchBBox)
             foot.setPeakSchema(self.merged.getPeakSchema())
 
-            if not foot.overlapsMask(mask):
+            if not foot.overlapsWithMask(mask):
                 foot.addPeak(x, y, 0)
                 foot.getPeaks()[0].set("merge.peak.%s" % self.config.skyFilterName, True)
                 skySourceFootprints.append(foot)
