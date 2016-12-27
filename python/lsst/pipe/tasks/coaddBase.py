@@ -62,13 +62,38 @@ class CoaddBaseConfig(pexConfig.Config):
         doc="Subtask that helps fill CoaddInputs catalogs added to the final Exposure",
         target=CoaddInputRecorderTask
     )
-    doPsfMatch = pexConfig.Field(dtype=bool, doc="Match to modelPsf?", default=False)
+    doPsfMatch = pexConfig.Field(
+        dtype=bool,
+        doc="Match to modelPsf? Deprecated. Sets makePsfMatched=True, makeDirect=False",
+        default=False
+    )
     modelPsf = measAlg.GaussianPsfFactory.makeField(doc="Model Psf factory")
     doApplyUberCal = pexConfig.Field(
         dtype=bool,
         doc="Apply meas_mosaic ubercal results to input calexps?",
         default=False
     )
+    makeDirect = pexConfig.Field(
+        doc="Make direct TempExps/Coadds?",
+        dtype=bool,
+        default=True,
+    )
+    makePsfMatched = pexConfig.Field(
+        doc="Make Psf-Matched TempExps/Coadds?",
+        dtype=bool,
+        default=False,
+    )
+
+    def validate(self):
+        pexConfig.Config.validate(self)
+        if not self.makePsfMatched and not self.makeDirect:
+            raise RuntimeError("At least one of config.makePsfMatched and config.makeDirect must be True")
+        if self.doPsfMatch:
+            # Courtesy backwards compatibility.
+            # Configs do not have loggers
+            print("doPsfMatch deprecated. Setting makePsfMatched=True and makeDirect=False")
+            self.makePsfMatched = True
+            self.makeDirect = False
 
 
 class CoaddTaskRunner(pipeBase.TaskRunner):
@@ -156,11 +181,23 @@ class CoaddBaseTask(pipeBase.CmdLineTask):
             applyMosaicResults(dataRef, calexp=exposure)
         return exposure
 
-    def getCoaddDatasetName(self):
-        return self.config.coaddName + "Coadd"
+    def getCoaddDatasetName(self, warpType='exposure'):
+        suffix = warpType.replace("exposure", "")
+        return self.config.coaddName + "Coadd" + suffix
 
-    def getTempExpDatasetName(self):
-        return self.config.coaddName + "Coadd_tempExp"
+    def getTempExpDatasetName(self, warpType='exposure'):
+        suffix = warpType.replace("exposure", "")
+        return self.config.coaddName + "Coadd_tempExp" + suffix
+
+    def getWarpTypeList(self):
+        """Return list of requested warp types per the config.
+        """
+        warpTypeList = []
+        if self.config.makeDirect:
+            warpTypeList.append('exposure')
+        if self.config.makePsfMatched:
+            warpTypeList.append('exposurePsfMatched')
+        return warpTypeList
 
     @classmethod
     def _makeArgumentParser(cls):
@@ -189,7 +226,7 @@ class CoaddBaseTask(pipeBase.CmdLineTask):
         """
         return afwImage.MaskU.getPlaneBitMask(self.config.badMaskPlanes)
 
-    def writeCoaddOutput(self, dataRef, obj, suffix=None):
+    def writeCoaddOutput(self, dataRef, obj, suffix=None, warpType='exposure'):
         """!
         \brief Write a coadd product through the butler
 
@@ -197,7 +234,7 @@ class CoaddBaseTask(pipeBase.CmdLineTask):
         \param[in,out]  obj      coadd product to write
         \param[in]      suffix   suffix to apply to coadd dataset name
         """
-        objName = self.getCoaddDatasetName()
+        objName = self.getCoaddDatasetName(warpType)
         if suffix is not None:
             objName += "_" + suffix
         self.log.info("Persisting %s" % objName)
