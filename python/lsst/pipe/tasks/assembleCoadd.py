@@ -316,9 +316,9 @@ discussed in \ref pipeTasks_multiBand (but note that normally, one would use the
             self.warpType = warpType
             coaddExp = self.runWarpType(dataRef=dataRef, calExpRefList=calExpRefList,
                                         skyInfo=skyInfo)
-            if warpType == 'exposure':
+            if warpType == 'direct':
                 returnStruct.coaddExposure = coaddExp
-            elif warpType == 'exposurePsfMatched':
+            elif warpType == 'psfMatched':
                 returnStruct.coaddExposurePsfMatched = coaddExp
             else:
                 raise RuntimeError("Unidentified warp type (%)" % (warpType))
@@ -636,7 +636,7 @@ discussed in \ref pipeTasks_multiBand (but note that normally, one would use the
         for tempExp, weight in zip(tempExpList, weightList):
             self.inputRecorder.addVisitToCoadd(coaddInputs, tempExp, weight)
         coaddInputs.visits.sort()
-        if self.config.doPsfMatch:
+        if self.warpType == 'psfMatched':
             psf = self.config.modelPsf.apply()
         else:
             psf = measAlg.CoaddPsf(coaddInputs.ccds, coaddExposure.getWcs())

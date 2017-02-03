@@ -119,16 +119,16 @@ class MakeCoaddTempExpTask(CoaddBaseTask):
 
             exps = self.createTempExp(calexpRefList, skyInfo, visitId)
 
-            if exps.exposure is not None or exps.exposurePsfMatched is not None:
+            if exps.direct is not None or exps.psfMatched is not None:
                 dataRefList.append(tempExpRef)
             else:
                 self.log.warn("tempExp %s could not be created", tempExpRef.dataId)
 
             if self.config.doWrite:
-                if exps.exposure:
-                    self.writeCoaddOutput(tempExpRef, exps.exposure, suffix="tempExp")
-                if exps.exposurePsfMatched:
-                    self.writeCoaddOutput(tempExpRef, exps.exposurePsfMatched, suffix="tempExpPsfMatched")
+                if exps.direct:
+                    self.writeCoaddOutput(tempExpRef, exps.direct, suffix="tempExp")
+                if exps.psfMatched:
+                    self.writeCoaddOutput(tempExpRef, exps.psfMatched, suffix="tempExpPsfMatched")
 
         return dataRefList
 
@@ -149,13 +149,13 @@ class MakeCoaddTempExpTask(CoaddBaseTask):
         @param visitId: integer identifier for visit, for the table that will
             produce the CoaddPsf
         @return a pipeBase Struct containing:
-          - exposure: direct coadd temp exp if config.makeDirect else None
-          - exposurePsfMatched: psfMatched coadd temp exp if config.makePsfMatched else None
+          - direct: direct coadd temp exp if config.makeDirect else None
+          - psfMatched: psfMatched coadd temp exp if config.makePsfMatched else None
         """
         inputRecorder = self.inputRecorder.makeCoaddTempExpRecorder(visitId, len(calexpRefList))
         warpTypeList = self.getWarpTypeList()
-        coaddTempExps = pipeBase.Struct(exposure=None,
-                                        exposurePsfMatched=None,)
+        coaddTempExps = pipeBase.Struct(direct=None,
+                                        psfMatched=None,)
 
         for warpType in warpTypeList:
             setattr(coaddTempExps, warpType, self._prepareEmptyExposure(skyInfo))
@@ -217,9 +217,9 @@ class MakeCoaddTempExpTask(CoaddBaseTask):
                           warpType, totGoodPix[warpType], 100.0*totGoodPix[warpType]/skyInfo.bbox.getArea())
             if totGoodPix[warpType] > 0 and didSetMetadata[warpType]:
                 inputRecorder[warpType].finish(coaddTempExps.getDict()[warpType], totGoodPix[warpType])
-                if warpType == 'exposurePsfMatched':
+                if warpType == 'psfMatched':
                     coaddTempExps.getDict()[warpType].setPsf(modelPsf)
-                elif warpType == 'exposure':
+                elif warpType == 'direct':
                     coaddTempExps.getDict()[warpType].setPsf(
                         CoaddPsf(inputRecorder[warpType].coaddInputs.ccds, skyInfo.wcs))
                 else:

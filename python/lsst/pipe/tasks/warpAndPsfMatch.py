@@ -83,9 +83,9 @@ class WarpAndPsfMatchTask(pipeBase.Task):
         -------
         An lsst.pipe.base.Struct with the following fields:
 
-        exposure : :cpp:class:`lsst::afw::image::Exposure`
+        direct : :cpp:class:`lsst::afw::image::Exposure`
             warped exposure
-        exposurePsfMatched : :cpp:class: `lsst::afw::image::Exposure`
+        psfMatched : :cpp:class: `lsst::afw::image::Exposure`
             warped and psf-Matched temporary exposure
         """
         if makePsfMatched and modelPsf is None:
@@ -135,6 +135,6 @@ class WarpAndPsfMatchTask(pipeBase.Task):
                 exposurePsfMatched = self.psfMatch.run(exposure, modelPsf).psfMatchedExposure
 
         return pipeBase.Struct(
-            exposure=exposure if makeDirect else None,
-            exposurePsfMatched=exposurePsfMatched if makePsfMatched else None
+            direct=exposure if makeDirect else None,
+            psfMatched=exposurePsfMatched if makePsfMatched else None
         )

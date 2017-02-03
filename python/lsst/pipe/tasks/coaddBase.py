@@ -181,12 +181,12 @@ class CoaddBaseTask(pipeBase.CmdLineTask):
             applyMosaicResults(dataRef, calexp=exposure)
         return exposure
 
-    def getCoaddDatasetName(self, warpType='exposure'):
-        suffix = warpType.replace("exposure", "")
+    def getCoaddDatasetName(self, warpType='direct'):
+        suffix = "" if warpType == "direct" else warpType[0].upper() + warpType[1:]
         return self.config.coaddName + "Coadd" + suffix
 
-    def getTempExpDatasetName(self, warpType='exposure'):
-        suffix = warpType.replace("exposure", "")
+    def getTempExpDatasetName(self, warpType='direct'):
+        suffix = "" if warpType == "direct" else warpType[0].upper() + warpType[1:]
         return self.config.coaddName + "Coadd_tempExp" + suffix
 
     def getWarpTypeList(self):
@@ -194,9 +194,9 @@ class CoaddBaseTask(pipeBase.CmdLineTask):
         """
         warpTypeList = []
         if self.config.makeDirect:
-            warpTypeList.append('exposure')
+            warpTypeList.append('direct')
         if self.config.makePsfMatched:
-            warpTypeList.append('exposurePsfMatched')
+            warpTypeList.append('psfMatched')
         return warpTypeList
 
     @classmethod
@@ -226,7 +226,7 @@ class CoaddBaseTask(pipeBase.CmdLineTask):
         """
         return afwImage.MaskU.getPlaneBitMask(self.config.badMaskPlanes)
 
-    def writeCoaddOutput(self, dataRef, obj, suffix=None, warpType='exposure'):
+    def writeCoaddOutput(self, dataRef, obj, suffix=None, warpType='direct'):
         """!
         \brief Write a coadd product through the butler
 
