@@ -39,6 +39,22 @@ class CalibsParseTask(ParseTask):
             obstype = "fringe"
         return obstype
 
+    def getDestination(self, butler, info, filename):
+        """Get destination for the file
+
+        @param butler      Data butler
+        @param info        File properties, used as dataId for the butler
+        @param filename    Input filename
+        @return Destination filename
+        """
+        calibType = self.getCalibType(filename)
+        raw = butler.get(calibType + "_filename", info)[0]
+        # Ensure filename is devoid of cfitsio directions about HDUs
+        c = raw.find("[")
+        if c > 0:
+            raw = raw[:c]
+        return raw
+
 
 class CalibsRegisterConfig(RegisterConfig):
     """Configuration for the CalibsRegisterTask"""
@@ -161,6 +177,8 @@ class IngestCalibsArgumentParser(InputOnlyArgumentParser):
         InputOnlyArgumentParser.__init__(self, *args, **kwargs)
         self.add_argument("-n", "--dry-run", dest="dryrun", action="store_true",
                           default=False, help="Don't perform any action?")
+        self.add_argument("--mode", choices=["move", "copy", "link", "skip"], default="link",
+                          help="Mode of delivering the files to their destination")
         self.add_argument("--create", action="store_true", help="Create new registry?")
         self.add_argument("--validity", type=int, required=True, help="Calibration validity period (days)")
         self.add_argument("--calibType", type=str, default=None,
@@ -175,6 +193,8 @@ class IngestCalibsConfig(Config):
     """Configuration for IngestCalibsTask"""
     parse = ConfigurableField(target=CalibsParseTask, doc="File parsing")
     register = ConfigurableField(target=CalibsRegisterTask, doc="Registry entry")
+    allowError = Field(dtype=bool, default=False, doc="Allow error in ingestion?")
+    clobber = Field(dtype=bool, default=False, doc="Clobber existing file?")
 
 
 class IngestCalibsTask(IngestTask):
@@ -197,6 +217,10 @@ class IngestCalibsTask(IngestTask):
                 if calibType not in self.register.config.tables:
                     self.log.warn(str("Skipped adding %s of observation type '%s' to registry" %
                                       (infile, calibType)))
+                    continue
+                outfile = self.parse.getDestination(args.butler, fileInfo, infile)
+                ingested = self.ingest(infile, outfile, mode=args.mode, dryrun=args.dryrun)
+                if not ingested:
                     continue
                 for info in hduInfoList:
                     self.register.addRow(registry, info, dryrun=args.dryrun,
