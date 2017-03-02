@@ -221,6 +221,8 @@ class IngestCalibsTask(IngestTask):
                 outfile = self.parse.getDestination(args.butler, fileInfo, infile)
                 ingested = self.ingest(infile, outfile, mode=args.mode, dryrun=args.dryrun)
                 if not ingested:
+                    self.log.warn(str("Failed to ingest %s of observation type '%s'" %
+                                      (infile, calibType)))
                     continue
                 for info in hduInfoList:
                     self.register.addRow(registry, info, dryrun=args.dryrun,
