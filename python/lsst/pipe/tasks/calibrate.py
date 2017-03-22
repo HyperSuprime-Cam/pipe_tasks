@@ -32,7 +32,7 @@ import lsst.daf.base as dafBase
 from lsst.afw.math import BackgroundList
 from lsst.afw.table import IdFactory, SourceTable
 from lsst.meas.algorithms import SourceDetectionTask
-from lsst.meas.astrom import AstrometryTask, displayAstrometry, createMatchMetadata
+from lsst.meas.astrom import AstrometryTask, displayAstrometry, createMatchMetadata, denormalizeMatches
 from lsst.meas.base import SingleFrameMeasurementTask, ApplyApCorrTask, CatalogCalculationTask
 from lsst.meas.deblender import SourceDeblendTask
 from .photoCal import PhotoCalTask
@@ -57,6 +57,13 @@ class CalibrateConfig(pexConfig.Config):
         dtype=bool,
         default=True,
         doc="Write reference matches (ignored if doWrite false)?",
+    )
+    doWriteMatchesDenormalized = pexConfig.Field(
+        dtype=bool,
+        default=False,
+        doc=("Write reference matches in denormalized format? "
+             "This format uses more disk space, but is more convenient to read. "
+             "Ignored if doWriteMatches=False or doWrite=False."),
     )
     doAstrometry = pexConfig.Field(
         dtype=bool,
@@ -507,6 +514,9 @@ class CalibrateTask(pipeBase.CmdLineTask):
             normalizedMatches = afwTable.packMatches(astromMatches)
             normalizedMatches.table.setMetadata(matchMeta)
             dataRef.put(normalizedMatches, "srcMatch")
+            if self.config.doWriteMatchesDenormalized:
+                denormMatches = denormalizeMatches(astromMatches, matchMeta)
+                dataRef.put(denormMatches, "srcMatchFull")
         dataRef.put(exposure, "calexp")
         dataRef.put(background, "calexpBackground")
 
