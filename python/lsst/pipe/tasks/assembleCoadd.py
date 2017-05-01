@@ -753,7 +753,7 @@ discussed in \ref pipeTasks_multiBand (but note that normally, one would use the
                 width = rec["width"].asArcseconds()/plateScale    # convert to pixels
                 height = rec["height"].asArcseconds()/plateScale  # convert to pixels
 
-                halfSize = afwGeom.ExtentI(0.5*width, 0.5*height)
+                halfSize = afwGeom.ExtentI(int(0.5*width), int(0.5*height))
                 bbox = afwGeom.Box2I(center - halfSize, center + halfSize)
 
                 bbox = afwGeom.BoxI(afwGeom.PointI(int(center[0] - 0.5*width), int(center[1] - 0.5*height)),
