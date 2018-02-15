@@ -1335,7 +1335,7 @@ class CompareWarpAssembleCoaddConfig(AssembleCoaddConfig):
     doScaleWarpVariance = pexConfig.Field(
         doc="Rescale Warp variance plane using empirical noise?",
         dtype=bool,
-        default=True,
+        default=False,
     )
     maskScaleWarpVariance = pexConfig.ListField(
         dtype=str,
@@ -1355,7 +1355,7 @@ class CompareWarpAssembleCoaddConfig(AssembleCoaddConfig):
         self.assembleStaticSkyModel.badMaskPlanes = ["NO_DATA", ]
         self.assembleStaticSkyModel.warpType = 'psfMatched'
         self.assembleStaticSkyModel.statistic = 'MEANCLIP'
-        self.assembleStaticSkyModel.sigmaClip = 5
+        self.assembleStaticSkyModel.sigmaClip = 2.5
         self.assembleStaticSkyModel.clipIter = 3
         self.assembleStaticSkyModel.calcErrorFromInputVariance = False
         self.assembleStaticSkyModel.doWrite = False
