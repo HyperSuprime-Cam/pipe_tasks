@@ -1069,8 +1069,10 @@ class MeasureMergedCoaddSourcesTask(PipelineTask, CmdLineTask):
             matches.table.setMetadata(matchResult.matchMeta)
             results.matchResult = matches
             if self.config.doWriteMatchesDenormalized:
-                results.denormMatches = denormalizeMatches(matchResult.matches,
-                                                           matchResult.matchMeta)
+                if matchResult.matches:
+                    results.denormMatches = denormalizeMatches(matchResult.matches, matchResult.matchMeta)
+                else:
+                    self.log.warn("No matches, so can't write denormalized matches file")
 
         results.outputSources = sources
         return results
